@@ -129,8 +129,8 @@ CREATE TABLE scraper_schemas(
 CREATE TABLE courses(
     course_id UNIQUEIDENTIFIER PRIMARY KEY NOT NULL DEFAULT NEWID(),
     course_source_id UNIQUEIDENTIFIER NOT NULL,
-    course_title NVARCHAR (250) NOT NULL,
-    course_description NVARCHAR (MAX) NOT NULL,
+    course_title NVARCHAR (250) DEFAULT NULL,
+    course_description NVARCHAR (MAX) DEFAULT NULL,
     course_code NVARCHAR (50) DEFAULT NULL,
     CONSTRAINT courses_fk1 FOREIGN KEY (course_source_id)
     REFERENCES sources (source_id)

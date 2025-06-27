@@ -1,1 +1,4 @@
 flyway.conf
+venv*
+%USERPROFILE%
+%USERPROFILE%/

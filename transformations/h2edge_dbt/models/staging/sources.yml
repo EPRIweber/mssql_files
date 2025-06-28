@@ -1,0 +1,16 @@
+# models/staging/sources.yml
+version: 2
+
+sources:
+  - name: dbo  # This is a name you give to your raw schema
+    database: H2EDGE
+    schema: dbo
+    tables:
+      - name: courses
+      - name: logs
+      - name: flyway_schema_history
+      - name: log_stages
+      - name: runs
+      - name: scraper_schemas
+      - name: sources
+      - name: urls

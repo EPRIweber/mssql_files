@@ -1,0 +1,2 @@
+ALTER TABLE courses
+ADD course_credits NVARCHAR (30) DEFAULT NULL;

@@ -1,0 +1,7 @@
+ALTER TABLE logs
+DROP CONSTRAINT logs_fk2;
+
+ALTER TABLE logs
+ADD CONSTRAINT logs_fk2 FOREIGN KEY (log_source_id)
+REFERENCES sources (source_id)
+ON DELETE CASCADE;

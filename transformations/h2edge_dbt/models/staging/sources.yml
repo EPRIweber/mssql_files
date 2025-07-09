@@ -2,7 +2,7 @@
 version: 2
 
 sources:
-  - name: dbo  # This is a name you give to your raw schema
+  - name: dbo
     database: H2EDGE
     schema: dbo
     tables:
@@ -14,3 +14,5 @@ sources:
       - name: scraper_schemas
       - name: sources
       - name: urls
+      - name: taxonomy01
+      - name: course_taxonomy01

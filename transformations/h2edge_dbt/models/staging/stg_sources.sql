@@ -2,6 +2,6 @@
 
 SELECT
     source_id,
-    source_name AS university_name
+    source_name
 FROM
     {{ source('dbo', 'sources') }}

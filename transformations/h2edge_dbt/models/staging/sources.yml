@@ -16,3 +16,4 @@ sources:
       - name: urls
       - name: taxonomy01
       - name: course_taxonomy01
+      - name: universities

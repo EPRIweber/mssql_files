@@ -60,7 +60,6 @@ def clean_cipcode(cip_str):
     try:
         # Clean the string and convert to Decimal
         cleaned_str = cip_str.replace('="', '').replace('"', '')
-        # Return the raw decimal for validation purposes
         return Decimal(cleaned_str)
         
     except (InvalidOperation, TypeError):
@@ -68,7 +67,7 @@ def clean_cipcode(cip_str):
 
 def extract_completions_data_from_access_db(db_path, valid_unitids, valid_cipcodes):
     """
-    Connects to an Access database, finds 'C..._A' tables,
+    Connects to a single Access database, finds 'C..._A' tables,
     and extracts completions data, filtering by valid keys and data constraints.
     """
     data_for_upsert = []
@@ -89,8 +88,7 @@ def extract_completions_data_from_access_db(db_path, valid_unitids, valid_cipcod
                 match = completions_table_pattern.match(table_name)
                 if match:
                     report_year = int(match.group(1))
-                    print(f"  -> Found matching table: '{table_name}'. Parsing data for year {report_year}...")
-
+                    
                     try:
                         columns_in_table = {row.column_name.upper() for row in access_cursor.columns(table=table_name)}
                         required_columns = {'UNITID', 'CIPCODE', 'AWLEVEL', 'CTOTALT'}
@@ -137,6 +135,7 @@ def extract_completions_data_from_access_db(db_path, valid_unitids, valid_cipcod
                          print(f"     ...An unexpected error occurred processing table '{table_name}': {ex}")
     except pyodbc.Error as e:
         print(f"Error connecting to or reading from {os.path.basename(db_path)}: {e}")
+    
     return data_for_upsert
 
 def upsert_completions_to_sql_server(data, conn_str):
@@ -172,7 +171,7 @@ def upsert_completions_to_sql_server(data, conn_str):
 
 def main():
     """Main function to drive the migration process."""
-    print("--- Starting IPEDS Completions Data Migration ---")
+    print("--- Starting IPEDS Completions Data Migration (Sequential) ---")
 
     if not os.path.isdir(ACCESS_DB_FOLDER):
         print(f"FATAL ERROR: The specified folder does not exist: {ACCESS_DB_FOLDER}")
@@ -191,20 +190,22 @@ def main():
     valid_unitids, valid_cipcodes = get_valid_keys(mssql_conn_str)
     all_data_to_upsert = []
     
-    access_files = [f for f in os.listdir(ACCESS_DB_FOLDER) if f.lower().endswith(('.accdb', '.mdb'))]
+    access_files = [os.path.join(ACCESS_DB_FOLDER, f) for f in os.listdir(ACCESS_DB_FOLDER) if f.lower().endswith(('.accdb', '.mdb'))]
     if not access_files:
         print(f"No Access database files found in '{ACCESS_DB_FOLDER}'.")
         return
-    print(f"\nFound {len(access_files)} Access files to process.")
+    
+    print(f"\nFound {len(access_files)} Access files to process sequentially...")
 
-    for filename in access_files:
-        full_path = os.path.join(ACCESS_DB_FOLDER, filename)
-        extracted_data = extract_completions_data_from_access_db(full_path, valid_unitids, valid_cipcodes)
+    # *** REVERTED: Process files one by one in a simple for loop ***
+    for file_path in access_files:
+        extracted_data = extract_completions_data_from_access_db(file_path, valid_unitids, valid_cipcodes)
         if extracted_data:
             all_data_to_upsert.extend(extracted_data)
-            
-    # *** NEW: Aggregate data to prevent MERGE conflicts from duplicate source rows ***
-    print("\nAggregating extracted data to handle duplicates...")
+
+    print("\nAll files processed. Now aggregating data...")
+    
+    # Aggregate data to prevent MERGE conflicts from duplicate source rows
     aggregated_data = {}
     for row in all_data_to_upsert:
         report_year, unitid, cipcode, award_level, completions = row
@@ -215,8 +216,7 @@ def main():
 
     # Convert the aggregated dictionary back into the list of tuples format
     final_data_for_upsert = [key + (total_completions,) for key, total_completions in aggregated_data.items()]
-    print(f"-> Aggregation complete. Original records: {len(all_data_to_upsert)}, Final unique records: {len(final_data_for_upsert)}")
-
+    print(f"-> Aggregation complete. Original valid records: {len(all_data_to_upsert)}, Final unique records for upsert: {len(final_data_for_upsert)}")
 
     # Pass the clean, aggregated data to the upsert function
     upsert_completions_to_sql_server(final_data_for_upsert, mssql_conn_str)

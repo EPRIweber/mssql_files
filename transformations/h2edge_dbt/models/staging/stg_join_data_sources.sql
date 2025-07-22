@@ -19,8 +19,8 @@ WITH ranked_matches AS (
         END
     ) AS rn
   FROM {{ source('dbo', 'sources') }} AS s
-  JOIN {{ source('dbo', 'universities') }} AS u
-    ON s.src_host    = u.uni_host
+  LEFT JOIN {{ source('dbo', 'universities') }} AS u
+    ON s.src_host = u.uni_host
     OR s.src_host LIKE '%.' + u.uni_host
     OR LOWER(s.cleaned_name) LIKE '%' + LOWER(u.instnm) + '%'
 )

@@ -8,6 +8,8 @@ WITH ranked_matches AS (
     u.instnm,
     s.src_host,
     u.uni_host,
+    u.unitid,
+    u.universities_table_id,
     ROW_NUMBER() OVER (
       PARTITION BY s.source_name
       ORDER BY

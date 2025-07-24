@@ -1,0 +1,7 @@
+ALTER TABLE dbo.logs
+ALTER COLUMN log_source_id UNIQUEIDENTIFIER NULL;
+GO
+
+ALTER TABLE dbo.logs
+ADD CONSTRAINT DF_logs_log_source_id DEFAULT NULL FOR log_source_id;
+GO

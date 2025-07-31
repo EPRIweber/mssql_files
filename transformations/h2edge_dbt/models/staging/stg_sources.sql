@@ -2,6 +2,7 @@
 
 SELECT
     source_id,
-    source_name
+    source_name,
+    cleaned_name
 FROM
     {{ source('dbo', 'sources') }}

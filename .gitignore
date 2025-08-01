@@ -2,3 +2,4 @@ flyway.conf
 venv*
 %USERPROFILE%
 %USERPROFILE%/
+prompt*

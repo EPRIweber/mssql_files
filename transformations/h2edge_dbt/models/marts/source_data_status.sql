@@ -35,14 +35,15 @@ course_counts AS (
 )
 
 SELECT
-  s.source_name,
-  COALESCE(sc.schema_count, 0) AS schema_count,
-  COALESCE(u.url_count, 0) AS url_count,
-  COALESCE(c.course_count, 0) AS course_count
+  s.cleaned_name,
+  SUM(COALESCE(sc.schema_count, 0)) AS schema_count,
+  SUM(COALESCE(u.url_count, 0)) AS url_count,
+  SUM(COALESCE(c.course_count, 0)) AS course_count
 FROM {{ ref('stg_sources') }} AS s
 LEFT JOIN schema_counts AS sc
 ON sc.scraper_schema_source_id = s.source_id
 LEFT JOIN url_counts AS u
 ON u.url_source_id = s.source_id
 LEFT JOIN course_counts AS c
-ON c.course_source_id = s.source_id;
+ON c.course_source_id = s.source_id
+GROUP BY s.cleaned_name;

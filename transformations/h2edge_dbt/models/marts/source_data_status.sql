@@ -8,42 +8,61 @@
 
 WITH schema_counts AS (
   SELECT
-    scraper_schema_source_id,
+    ss.cleaned_name,
     COUNT(*) AS schema_count
   FROM {{
     ref('stg_scraper_schemas')
-  }}
-  GROUP BY scraper_schema_source_id
+  }} ssc
+  JOIN {{
+    ref('stg_sources')
+  }} ss
+    ON ssc.scraper_schema_source_id = ss.source_id
+  GROUP BY ss.cleaned_name
 ),
-
 url_counts AS (
   SELECT
-    url_source_id,
+    ss.cleaned_name,
     COUNT(*) AS url_count
   FROM {{
     ref('stg_urls')
-  }}
-  GROUP BY url_source_id
+  }} u
+  JOIN {{
+    ref('stg_sources')
+  }} ss
+    ON u.url_source_id = ss.source_id
+  GROUP BY ss.cleaned_name
 ),
-
+deduped_courses AS (
+  SELECT DISTINCT
+    ss.cleaned_name,
+    c.course_description,
+    c.course_title
+  FROM {{
+    ref('stg_courses')
+  }} c
+  JOIN {{
+    ref('stg_sources')
+  }} ss
+    ON c.course_source_id = ss.source_id
+),
 course_counts AS (
   SELECT
-    course_source_id,
+    cleaned_name,
     COUNT(*) AS course_count
-  FROM {{ ref('stg_courses') }}
-  GROUP BY course_source_id
+  FROM deduped_courses
+  GROUP BY cleaned_name
 )
-
 SELECT
   s.cleaned_name,
-  SUM(COALESCE(sc.schema_count, 0)) AS schema_count,
-  SUM(COALESCE(u.url_count, 0)) AS url_count,
-  SUM(COALESCE(c.course_count, 0)) AS course_count
-FROM {{ ref('stg_sources') }} AS s
-LEFT JOIN schema_counts AS sc
-ON sc.scraper_schema_source_id = s.source_id
-LEFT JOIN url_counts AS u
-ON u.url_source_id = s.source_id
-LEFT JOIN course_counts AS c
-ON c.course_source_id = s.source_id
-GROUP BY s.cleaned_name;
+  COALESCE(sc.schema_count, 0) AS schema_count,
+  COALESCE(u.url_count, 0) AS url_count,
+  COALESCE(c.course_count, 0) AS course_count
+FROM (
+  SELECT DISTINCT cleaned_name
+  FROM {{
+    ref('stg_sources')
+  }}
+) AS s
+LEFT JOIN schema_counts sc ON sc.cleaned_name = s.cleaned_name
+LEFT JOIN url_counts u ON u.cleaned_name = s.cleaned_name
+LEFT JOIN course_counts c ON c.cleaned_name = s.cleaned_name;

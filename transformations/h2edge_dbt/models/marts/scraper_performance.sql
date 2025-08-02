@@ -4,15 +4,13 @@
 
 WITH source_scrape_complete AS (
     SELECT 
-        source_id,
-        MAX(log_ts) AS scrape_ts,
-        MAX(log_run_id) AS max_run_id
+        s.source_id,
+        MAX(l.log_ts) AS scrape_ts,
+        MAX(l.log_run_id) AS max_run_id
     FROM {{ ref('stg_sources') }} s
-    LEFT JOIN {{ ref('stg_logs') }} l
-    ON (
-        s.source_id = l.log_source_id
-        AND l.log_message LIKE '%records scraped'
-    )
+    JOIN {{ ref('stg_logs') }} l
+      ON s.source_id = l.log_source_id
+     AND l.log_message LIKE '%records scraped%'
     GROUP BY s.source_id
 ),
 url_counts AS (
@@ -41,49 +39,55 @@ SELECT
     cc.course_count,
     seml.log_ts AS start_scrape_ts,
     sa.slots_left,
-    CAST(ssc.scrape_ts AS STRING) AS courses_extracted_ts
+    CAST(ssc.scrape_ts AS VARCHAR(30)) AS courses_extracted_ts
 FROM source_scrape_complete ssc
 JOIN {{ ref('stg_sources') }} s ON s.source_id = ssc.source_id
+
+-- log that contains the "X records scraped" message at the scrape completion
 LEFT JOIN {{ ref('stg_logs') }} l
-  ON (l.log_ts = ssc.scrape_ts
-      AND ssc.source_id = l.log_source_id
-      AND ssc.max_run_id = l.log_run_id
-      AND l.log_message NOT LIKE 'writing records%')
-CROSS JOIN LATERAL (
+  ON l.log_ts = ssc.scrape_ts
+ AND ssc.source_id = l.log_source_id
+ AND ssc.max_run_id = l.log_run_id
+ AND l.log_message NOT LIKE 'writing records%'
+
+-- extract the number of records scraped
+CROSS APPLY (
     SELECT 
         TRY_CAST(
             LEFT(
                 l.log_message,
-                NULLIF(STRPOS(LOWER(l.log_message), ' records scraped'), 0) - 1
+                NULLIF(CHARINDEX(' records scraped', LOWER(l.log_message)), 0) - 1
             ) AS INT
         ) AS extracted_count
 ) AS ec
+
+-- log that has the slots-left info
 LEFT JOIN {{ ref('stg_logs') }} seml
-  ON (seml.log_run_id = l.log_run_id
-      AND seml.log_message LIKE '%scrape (slots left%'
-      AND ssc.source_id = seml.log_source_id)
-CROSS JOIN LATERAL (
+  ON seml.log_run_id = l.log_run_id
+ AND seml.log_message LIKE '%scrape (slots left:%'
+ AND seml.log_source_id = ssc.source_id
+
+-- extract slots_left
+OUTER APPLY (
     SELECT
         TRY_CAST(
-            NULLIF(
-                TRIM(
-                    SUBSTR(
-                        seml.log_message,
-                        STRPOS(LOWER(seml.log_message), '(slots left:') + LENGTH('(slots left:'),
-                        CASE 
-                            WHEN STRPOS(LOWER(seml.log_message), '(slots left:') > 0 
-                                 AND STRPOS(')', seml.log_message, STRPOS(LOWER(seml.log_message), '(slots left:')) 
-                                     > STRPOS(LOWER(seml.log_message), '(slots left:') + LENGTH('(slots left:')
-                            THEN STRPOS(')', seml.log_message, STRPOS(LOWER(seml.log_message), '(slots left:'))
-                                 - (STRPOS(LOWER(seml.log_message), '(slots left:') + LENGTH('(slots left:'))
-                            ELSE 0
-                        END
-                    )
-                ),
-                ''
-            ) AS INT
+            LTRIM(RTRIM(
+                SUBSTRING(
+                    seml.log_message,
+                    CHARINDEX('(slots left:', LOWER(seml.log_message)) + LEN('(slots left:'),
+                    CASE 
+                        WHEN CHARINDEX('(slots left:', LOWER(seml.log_message)) > 0 
+                             AND CHARINDEX(')', seml.log_message, CHARINDEX('(slots left:', LOWER(seml.log_message))) 
+                                 > CHARINDEX('(slots left:', LOWER(seml.log_message)) + LEN('(slots left:')
+                        THEN CHARINDEX(')', seml.log_message, CHARINDEX('(slots left:', LOWER(seml.log_message)))
+                             - (CHARINDEX('(slots left:', LOWER(seml.log_message)) + LEN('(slots left:'))
+                        ELSE 0
+                    END
+                )
+            )) AS INT
         ) AS slots_left
 ) AS sa
+
 LEFT JOIN {{ ref('stg_runs') }} r ON r.run_id = ssc.max_run_id
 LEFT JOIN url_counts uc ON uc.url_source_id = s.source_id
 LEFT JOIN course_counts cc ON cc.course_source_id = s.source_id

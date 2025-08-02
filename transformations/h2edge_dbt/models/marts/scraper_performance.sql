@@ -1,3 +1,5 @@
+-- models/marts/scraper_performance.sql
+
 {{ config(materialized='view') }}
 
 WITH source_scrape_complete AS (
@@ -5,8 +7,8 @@ WITH source_scrape_complete AS (
         source_id,
         MAX(log_ts) AS scrape_ts,
         MAX(log_run_id) AS max_run_id
-    FROM {{ ref('sources') }} s
-    LEFT JOIN {{ ref('logs') }} l
+    FROM {{ ref('stg_sources') }} s
+    LEFT JOIN {{ ref('stg_logs') }} l
     ON (
         s.source_id = l.log_source_id
         AND l.log_message LIKE '%records scraped'
@@ -41,8 +43,8 @@ SELECT
     sa.slots_left,
     CAST(ssc.scrape_ts AS STRING) AS courses_extracted_ts
 FROM source_scrape_complete ssc
-JOIN {{ ref('sources') }} s ON s.source_id = ssc.source_id
-LEFT JOIN {{ ref('logs') }} l
+JOIN {{ ref('stg_sources') }} s ON s.source_id = ssc.source_id
+LEFT JOIN {{ ref('stg_logs') }} l
   ON (l.log_ts = ssc.scrape_ts
       AND ssc.source_id = l.log_source_id
       AND ssc.max_run_id = l.log_run_id
@@ -56,7 +58,7 @@ CROSS JOIN LATERAL (
             ) AS INT
         ) AS extracted_count
 ) AS ec
-LEFT JOIN {{ ref('logs') }} seml
+LEFT JOIN {{ ref('stg_logs') }} seml
   ON (seml.log_run_id = l.log_run_id
       AND seml.log_message LIKE '%scrape (slots left%'
       AND ssc.source_id = seml.log_source_id)
@@ -82,7 +84,7 @@ CROSS JOIN LATERAL (
             ) AS INT
         ) AS slots_left
 ) AS sa
-LEFT JOIN {{ ref('runs') }} r ON r.run_id = ssc.max_run_id
+LEFT JOIN {{ ref('stg_runs') }} r ON r.run_id = ssc.max_run_id
 LEFT JOIN url_counts uc ON uc.url_source_id = s.source_id
 LEFT JOIN course_counts cc ON cc.course_source_id = s.source_id
 WHERE r.run_id IS NOT NULL

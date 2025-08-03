@@ -5,12 +5,20 @@
 WITH source_scrape_complete AS (
     SELECT 
         s.source_id,
-        MAX(l.log_ts) AS scrape_ts,
-        MAX(l.log_run_id) AS max_run_id
+        COALESCE(
+            MAX(l.log_ts),
+            MAX(l_backup.log_ts)
+        ) AS scrape_ts,
+        COALESCE(
+            MAX(l.log_run_id),
+            MAX(l_backup.log_run_id)
+        ) AS max_run_id
     FROM {{ ref('stg_sources') }} s
-    JOIN {{ ref('stg_logs') }} l
+    LEFT JOIN {{ ref('stg_logs') }} l
       ON s.source_id = l.log_source_id
      AND l.log_message LIKE '%records scraped%'
+    LEFT JOIN {{ ref('stg_logs') }} l_backup
+      ON s.source_id = l_backup.log_source_id
     GROUP BY s.source_id
 ),
 url_counts AS (
@@ -39,7 +47,10 @@ SELECT
     cc.course_count,
     seml.log_ts AS start_scrape_ts,
     sa.slots_left,
-    CAST(ssc.scrape_ts AS VARCHAR(30)) AS courses_extracted_ts
+    CASE
+        WHEN cc.course_count > 0 THEN CAST(ssc.scrape_ts AS VARCHAR(30))
+        ELSE NULL
+    END AS courses_extracted_ts
 FROM source_scrape_complete ssc
 JOIN {{ ref('stg_sources') }} s ON s.source_id = ssc.source_id
 
@@ -51,7 +62,7 @@ LEFT JOIN {{ ref('stg_logs') }} l
  AND l.log_message NOT LIKE 'writing records%'
 
 -- extract the number of records scraped
-CROSS APPLY (
+OUTER APPLY (
     SELECT 
         TRY_CAST(
             LEFT(
@@ -91,5 +102,5 @@ OUTER APPLY (
 LEFT JOIN {{ ref('stg_runs') }} r ON r.run_id = ssc.max_run_id
 LEFT JOIN url_counts uc ON uc.url_source_id = s.source_id
 LEFT JOIN course_counts cc ON cc.course_source_id = s.source_id
-WHERE r.run_id IS NOT NULL
+--WHERE r.run_id IS NOT NULL
 ;

@@ -48,7 +48,10 @@ SELECT
     sd.url_count,
     sd.course_count,
     CASE WHEN sd.course_count > 0 THEN 1 ELSE 0 END AS has_courses,
-    FORMAT(lcs.last_scrape_ts, 'yyyy-MM-dd HH:mm') AS last_scrape_ts,
+    CASE
+        WHEN lcs.last_scrape_ts IS NOT NULL THEN FORMAT(lcs.last_scrape_ts, 'yyyy-MM-dd HH:mm')
+        ELSE 'Scrape Record Not Found'
+    END AS last_scrape_ts,
     CASE
         WHEN sd.course_count > 0 THEN 'Data Present'
         WHEN lcs.last_scrape_ts IS NOT NULL THEN 'Scraped, No Courses'

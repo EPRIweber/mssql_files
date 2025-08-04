@@ -7,3 +7,4 @@ SELECT
     cleaned_name
 FROM
     {{ source('dbo', 'sources') }}
+WHERE is_enabled = 1;

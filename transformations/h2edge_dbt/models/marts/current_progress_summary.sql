@@ -74,7 +74,7 @@ SELECT
         END
     ) AS status_indicator
     */
-FROM {{ ref('source_data_status') }} sd
+FROM {{ ref('source_data_status_enabled') }} sd
 LEFT JOIN latest_course_scrape lcs
     ON lcs.school_name = sd.cleaned_name
 LEFT JOIN latest_log_per_school llps

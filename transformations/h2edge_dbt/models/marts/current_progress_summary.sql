@@ -50,7 +50,7 @@ SELECT
     CASE WHEN sd.course_count > 0 THEN 1 ELSE 0 END AS has_courses,
     CASE
         WHEN lcs.last_scrape_ts IS NOT NULL THEN FORMAT(lcs.last_scrape_ts, 'yyyy-MM-dd HH:mm')
-        ELSE 'Scrape Record Not Found'
+        ELSE '0'
     END AS last_scrape_ts,
     CASE
         WHEN sd.course_count > 0 THEN 'Data Present'
@@ -60,7 +60,8 @@ SELECT
         ELSE 'Pending'
     END AS summary_status,
     llps.latest_log_message AS last_log,
-    llps.log_run_id AS run_id
+    llps.log_run_id AS run_id,
+    r.run_status AS run_status
     /*
     COALESCE(
         llps.latest_log_message,
@@ -78,4 +79,6 @@ LEFT JOIN latest_course_scrape lcs
     ON lcs.school_name = sd.cleaned_name
 LEFT JOIN latest_log_per_school llps
     ON llps.school_name = sd.cleaned_name
+LEFT JOIN {{ ref('stg_runs') }} r
+    ON run_id = llps.log_run_id
 ;

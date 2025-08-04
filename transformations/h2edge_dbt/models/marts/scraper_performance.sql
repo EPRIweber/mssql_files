@@ -40,6 +40,7 @@ SELECT
     s.cleaned_name,
     s.source_name,
     r.run_id,
+    r.run_status,
     r.run_start_time,
     r.run_end_time,
     ec.extracted_count,

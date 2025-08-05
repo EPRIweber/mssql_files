@@ -60,7 +60,7 @@ SELECT
         WHEN sd.schema_count > 0 THEN 'Schema Generated'
         ELSE 'Pending'
     END AS summary_status,
-    llps.latest_log_message AS last_log,
+    --llps.latest_log_message AS last_log,
     llps.log_run_id AS run_id,
     r.run_status AS run_status
     /*

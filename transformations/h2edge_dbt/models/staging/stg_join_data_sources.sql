@@ -10,6 +10,16 @@ WITH ranked_matches AS (
     u.uni_host,
     u.unitid,
     u.universities_table_id,
+    CASE
+      WHEN s.src_host = u.uni_host
+      OR s.src_host LIKE '%.' + u.uni_host
+        THEN 'host_match'
+      WHEN LOWER(s.cleaned_name) LIKE '%' + LOWER(u.instnm) + '%'
+      OR lower(u.instnm) LIKE '%' + LOWER(s.cleaned_name) + '%'
+        THEN 'name_match'
+      ELSE
+        'no_match'
+    END AS 'match_type',
     ROW_NUMBER() OVER (
       PARTITION BY s.source_name
       ORDER BY
@@ -25,6 +35,7 @@ WITH ranked_matches AS (
     ON s.src_host = u.uni_host
     OR s.src_host LIKE '%.' + u.uni_host
     OR LOWER(s.cleaned_name) LIKE '%' + LOWER(u.instnm) + '%'
+    OR lower(u.instnm) LIKE '%' + LOWER(s.cleaned_name) + '%'
 )
 SELECT *
 FROM ranked_matches

@@ -51,9 +51,19 @@ course_counts AS (
     COUNT(*) AS course_count
   FROM deduped_courses
   GROUP BY cleaned_name
+),
+source_count AS (
+  SELECT
+    cleaned_name,
+    COUNT(*) AS source_count
+  FROM {{ ref('stg_sources') }}
+  GROUP BY cleaned_name
 )
+
+
 SELECT
   s.cleaned_name,
+  COALESCE(ssc.source_count, 0) AS source_count,
   COALESCE(sc.schema_count, 0) AS schema_count,
   COALESCE(u.url_count, 0) AS url_count,
   COALESCE(c.course_count, 0) AS course_count
@@ -63,6 +73,7 @@ FROM (
     ref('stg_sources_enabled')
   }}
 ) AS s
+LEFT JOIN source_count ssc ON ssc.cleaned_name = s.cleaned_name
 LEFT JOIN schema_counts sc ON sc.cleaned_name = s.cleaned_name
 LEFT JOIN url_counts u ON u.cleaned_name = s.cleaned_name
 LEFT JOIN course_counts c ON c.cleaned_name = s.cleaned_name;

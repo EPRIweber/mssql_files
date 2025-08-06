@@ -1,4 +1,4 @@
--- models/staging/stg_courses.sql
+-- models/staging/stg_join_data_sources.sql
 
 WITH ranked_matches AS (
   SELECT

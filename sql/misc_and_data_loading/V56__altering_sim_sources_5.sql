@@ -3,7 +3,7 @@ ALTER PROCEDURE find_similar_sources
 AS
 BEGIN
   SELECT DISTINCT td.source_name, s.cleaned_name FROM @tvpData td
-  LEFT JOIN sources s
+  LEFT JOIN stg_enabled_sources s
   ON (s.cleaned_name LIKE '%' + td.source_name + '%'
   OR td.source_name LIKE '%' + s.cleaned_name + '%')
   AND EXISTS (

@@ -1,0 +1,2 @@
+ALTER TABLE sources
+ADD site_name NVARCHAR(500) DEFAULT NULL;
